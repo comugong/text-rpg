@@ -1,6 +1,7 @@
 #include <iostream>
 using namespace std;
 
+void setName(string& name);
 void setStatus(int stat[]);
 void printStatus(const string& name, const int stat[]);
 
@@ -12,14 +13,18 @@ int main(void) {                                                // 캐릭터 생
 	cout << "======================================" << endl;
 	cout << "       [ 던전 탈출 텍스트 RPG ]" << endl;
 	cout << "======================================" << endl;
-	cout << "용사의 이름을 입력해 주세요: ";
-	cin >> name;
-	cout << endl;
 
+	setName(name);
 	setStatus(stat);
 	printStatus(name, stat);
 
 	return 0;
+}
+
+void setName(string& name) {
+	cout << "용사의 이름을 입력해 주세요: ";
+	cin >> name;
+	cout << endl;
 }
 
 void setStatus(int stat[]) {
