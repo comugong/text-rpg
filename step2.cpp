@@ -1,7 +1,8 @@
 #include <iostream>
 using namespace std;
 
-void printStatus(string name, int stat[]);
+void setStatus(int stat[]);
+void printStatus(const string& name, const int stat[]);
 
 int main(void) {                                                // 캐릭터 생성 화면
 	string name;
@@ -14,6 +15,14 @@ int main(void) {                                                // 캐릭터 생
 	cout << "용사의 이름을 입력해 주세요: ";
 	cin >> name;
 	cout << endl;
+
+	setStatus(stat);
+	printStatus(name, stat);
+
+	return 0;
+}
+
+void setStatus(int stat[]) {
 	while (true) {
 		cout << "HP와 MP를 입력해주세요: ";
 		cin >> stat[0] >> stat[1];                              // stat[0]: HP, stat[1]: MP
@@ -31,13 +40,9 @@ int main(void) {                                                // 캐릭터 생
 		cout << "공격력이나 방어력이 너무 작습니다. 다시 입력해주세요." << endl;
 	}
 	cout << endl;
-
-	printStatus(name, stat);
-
-	return 0;
 }
 
-void printStatus(string name, int stat[]) {
+void printStatus(const string& name, const int stat[]) {
 	cout << "======================================" << endl;
 	cout << "         " << name << " 의 현재 능력치" << endl;
 	cout << "======================================" << endl;
