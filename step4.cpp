@@ -200,8 +200,8 @@ void classChange(const string& name, int stat[], Player*& player) {         // ì
 
 
 //Player.h
-#ifndef STUDENT_H
-#define STUDENT_H
+#ifndef PLAYER_H
+#define PLAYER_H
 #include <iostream>
 using namespace std;
 
