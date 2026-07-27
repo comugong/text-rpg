@@ -490,6 +490,8 @@ public:
 
 	virtual void classChangeMessage() const = 0;
 	virtual void attackMessage(Monster& monster, int damage) const = 0;
+	virtual int calculateDamage(Monster& monster) const = 0;
+
 	void printPlayerStatus() const;
 	const string& getName() const;
 	const string& getJob() const;
@@ -520,6 +522,7 @@ public:
 		cout << "* 전사로 전직하였습니다. (HP +30)" << endl;
 	}
 	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
 };
 
 class Magician : public Player {
@@ -530,6 +533,7 @@ public:
 		cout << "* 마법사로 전직하였습니다. (MP +30)" << endl;
 	}
 	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
 };
 
 class Thief : public Player {
@@ -540,6 +544,7 @@ public:
 		cout << "* 도적으로 전직하였습니다. (AP +30)" << endl;
 	}
 	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
 };
 
 class Archer : public Player {
@@ -550,6 +555,7 @@ public:
 		cout << "* 궁수로 전직하였습니다. (AP +30)" << endl;
 	}
 	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
 };
 #endif
 
@@ -618,15 +624,29 @@ void Player::levelUp(Monster& monster) {
 
 void Player::attack(Monster& monster) {
 	int monsterHp = monster.getHp();
-	int damage = ap - monster.getDp();
-	if (damage <= 0) damage = 1;
+
+	int damage = calculateDamage(monster);
+
+	if (damage <= 0) {
+		damage = 1;
+	}
+
 	int monsterNewHp = monsterHp - damage;
-	if (monsterNewHp < 0) monsterNewHp = 0;
+
+	if (monsterNewHp < 0) {
+		monsterNewHp = 0;
+	}
+
 	attackMessage(monster, damage);
+
 	cout << monster.getName() << " HP: " << monsterHp << " -> " << monsterNewHp;
-	if (monsterNewHp == 0) cout << " (사망)";
-	cout << endl;
-	cout << endl;
+
+	if (monsterNewHp == 0) {
+		cout << " (사망)";
+	}
+
+	cout << endl << endl;
+
 	monster.setHp(monsterNewHp);
 }
 
@@ -634,16 +654,34 @@ void Warrior::attackMessage(Monster& monster, int damage) const {
 	cout << "* 대검을 휘두른다! -> " << monster.getName() << "에게 " << damage << " 데미지!" << endl;
 }
 
+int Warrior::calculateDamage(Monster& monster) const {
+	return ap - monster.getDp();
+}
+
 void Magician::attackMessage(Monster& monster, int damage) const {
 	cout << "* 파이어볼을 발사한다! -> " << monster.getName() << "에게 " << damage << " 데미지!" << endl;
 }
 
+int Magician::calculateDamage(Monster& monster) const {
+	return ap - monster.getDp();
+}
+
 void Thief::attackMessage(Monster& monster, int damage) const{
-	cout << "* 표창을 날린다! -> " << monster.getName() << "에게 " << (double)damage / 5 << " 데미지! (x6)" << endl;
+	cout << "* 표창을 날린다! -> " << monster.getName() << "에게 " << damage << " 데미지! (x6)" << endl;
+}
+
+int Thief::calculateDamage(Monster& monster) const {
+	int damagePerHit = ap / 6 - monster.getDp();
+	return damagePerHit * 6;
 }
 
 void Archer::attackMessage(Monster& monster, int damage) const {
-	cout << "* 화살을 날린다! -> " << monster.getName() << "에게 " << (double)damage / 3 << " 데미지! (x3)" << endl;
+	cout << "* 화살을 날린다! -> " << monster.getName() << "에게 " << damage << " 데미지! (x3)" << endl;
+}
+
+int Archer::calculateDamage(Monster& monster) const {
+	int damagePerHit = ap / 3 - monster.getDp();
+	return damagePerHit * 3;
 }
 
 //Monster.h
