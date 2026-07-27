@@ -292,6 +292,15 @@ void gameMenu(Player& player, Monster*& monster, vector<Item>& inventory, vector
 		cout << "0. 게임 종료" << endl;
 		cout << endl;
 
+		if (cin.fail()) {
+			cout << "숫자를 입력해주세요." << endl;
+
+			cin.clear();
+			cin.ignore(1000, '\n');
+
+			continue;
+		}
+
 		cout << "선택: ";
 		cin >> menuNumber;
 		cout << endl;
@@ -401,6 +410,15 @@ void alchemyWorkshop(vector<Potion>& potion) {
 		cout << "3. 재료로 검색" << endl;
 		cout << "0. 돌아가기" << endl;
 		cout << endl;
+
+		if (cin.fail()) {
+			cout << "숫자를 입력해주세요." << endl;
+
+			cin.clear();
+			cin.ignore(1000, '\n');
+
+			continue;
+		}
 
 		cout << "선택: ";
 		cin >> menuNumber;
