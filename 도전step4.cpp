@@ -1,0 +1,924 @@
+//main.cpp
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+#include "Player.h"
+#include "Monster.h"
+using namespace std;
+
+const int MIN_STAT = 50;
+
+enum PlayerStatNum {
+	HP,      // 체력
+	MP,      // 마나
+	AP,      // 공격력
+	DP,      // 방어력
+	SIZE     // 스텟 개수
+};
+const int POTION_POINTUP = 50;
+
+struct Potion {
+	string name;
+	string recipe;
+};
+
+void setName(string& name);
+void setStatus(int stat[]);
+void updateStatus(int stat[], int& hpPotion, int& mpPotion, const string& name);
+void printStatus(const string& name, const int stat[]);
+void useHpPotion(int stat[], int& hpPotion);
+void useMpPotion(int stat[], int& mpPotion);
+void doubleAttackPoint(int stat[]);
+void doubleDefensePoint(int stat[]);
+void classChange(const string& name, int stat[], Player*& player);
+void fight(Player& player, vector<Item>& inventory);
+void gameMenu(Player& player, vector<Item>& inventory, vector<Potion>& potion);
+void printInventory(const vector<Item>& inventory);
+void getPotionRecipe(vector<Potion>& potion, string potionName, string ingredient1, int numIngredient1, string ingredient2, int numIngredient2);
+void showAllPotionRecipe(const vector<Potion>& potion);
+void SearchByName(const vector<Potion>& potion);
+void SearchByIngredient(const vector<Potion>& potion);
+void alchemyWorkshop(vector<Potion>& potion);
+void setPotion(int count, int* hpPotion, int* mpPotion);
+void getItem(vector<Item>& inventory, Item item, int count);
+void useItem(Player& player, vector<Item>& inventory);
+
+int main(void) {                                                // 캐릭터 생성 화면
+	srand(static_cast<unsigned int>(time(nullptr)));
+	string name;
+	int stat[SIZE] = { 0 };
+	int hpPotion, mpPotion;
+	Player* player = nullptr;
+	setPotion(5, &hpPotion, &mpPotion);
+
+	vector<Item> inventory;
+	vector<Potion> potion;
+	getPotionRecipe(potion, "HP 포션", "허브", 1, "맑은 물", 1);
+	getPotionRecipe(potion, "MP 포션", "허브", 1, "베리", 1);
+
+	cout << "======================================" << endl;
+	cout << "       [ 던전 탈출 텍스트 RPG ]" << endl;
+	cout << "======================================" << endl;
+
+	setName(name);
+	setStatus(stat);
+	printStatus(name, stat);
+	updateStatus(stat, hpPotion, mpPotion, name);
+	getItem(inventory, { "HP 포션", 50, 0, ItemType::Consumable }, hpPotion);
+	getItem(inventory, { "MP 포션", 50, 0, ItemType::Consumable }, mpPotion);
+	classChange(name, stat, player);
+	gameMenu(*player, inventory, potion);
+
+	delete player;
+	player = nullptr;
+
+	return 0;
+}
+
+void setName(string& name) {                                    // 이름 설정
+	cout << "용사의 이름을 입력해 주세요: ";
+	cin >> name;
+	cout << endl;
+}
+
+void setStatus(int stat[]) {                                    // 기본 스테이터스 설정
+	while (true) {
+		cout << "HP와 MP를 입력해주세요: ";
+		cin >> stat[HP] >> stat[MP];                            // 체력과 마나 입력
+
+		if (stat[HP] >= MIN_STAT && stat[MP] >= MIN_STAT) break;
+
+		cout << "HP나 MP의 값이 너무 작습니다. 다시 입력해주세요." << endl;
+	}
+	while (true) {
+		cout << "공격력과 방어력을 입력해주세요: ";
+		cin >> stat[AP] >> stat[DP];                            // 공격력과 방어력 입력
+
+		if (stat[AP] >= MIN_STAT && stat[DP] >= MIN_STAT) break;
+
+		cout << "공격력이나 방어력이 너무 작습니다. 다시 입력해주세요." << endl;
+	}
+	cout << endl;
+}
+
+void printStatus(const string& name, const int stat[]) {       // 스테이터스 출력
+	cout << "======================================" << endl;
+	cout << "         " << name << " 의 현재 능력치" << endl;
+	cout << "======================================" << endl;
+	cout << "HP: " << stat[HP] << "   MP: " << stat[MP] << endl;
+	cout << "공격력: " << stat[AP] << "   방어력: " << stat[DP] << endl;
+	cout << "======================================" << endl;
+	cout << endl;
+}
+
+void useHpPotion(int stat[], int &hpPotion) {                 // hp 포션 사용, hp 증가
+	if (hpPotion > 0) {
+		--hpPotion;
+		stat[HP] += POTION_POINTUP;
+		cout << "HP가 증가하였습니다. 현재 HP는 " << stat[HP] << "입니다." << endl;
+		cout << "남은 HP 포션은 " << hpPotion << "개 입니다." << endl;
+		cout << endl;
+	}
+	else {
+		cout << "남은 HP 포션이 없습니다." << endl;
+		cout << endl;
+	}
+}
+
+void useMpPotion(int stat[], int& mpPotion) {                 // mp 포션 사용, mp 증가
+	if (mpPotion > 0) {
+		--mpPotion;
+		stat[MP] += POTION_POINTUP;
+		cout << "MP가 증가하였습니다. 현재 MP는 " << stat[MP] << "입니다." << endl;
+		cout << "남은 MP 포션은 " << mpPotion << "개 입니다." << endl;
+		cout << endl;
+	}
+	else {
+		cout << "남은 MP 포션이 없습니다." << endl;
+	}
+}
+
+void doubleAttackPoint(int stat[]) {                          // 공격력 2배 증가
+	stat[AP] *= 2;
+	cout << "공격력이 2배 증가했습니다. 현재 공격력은 "<< stat[AP] << "입니다." << endl;
+	cout << endl;
+}
+
+void doubleDefensePoint(int stat[]) {                          // 방어력 2배 증가
+	stat[DP] *= 2;
+	cout << "방어력이 2배 증가했습니다. 현재 방어력은 " << stat[DP] << "입니다." << endl;
+	cout << endl;
+}
+
+void updateStatus(int stat[], int& hpPotion, int& mpPotion, const string& name) {          // 게임 시작 전 메뉴
+	int menuNumber = -1;
+
+	cout << "* HP 포션 " << hpPotion <<"개, MP 포션 "<< mpPotion << "개가 기본 지급되었습니다." << endl;
+	while (true) {
+		cout << "======================================" << endl;
+		cout << "          < 캐릭터 강화 >" << endl;
+		cout << "1. HP UP    2. MP UP    3. 공격력 2배" << endl;
+		cout << "4. 방어력 2배  5. 현재 능력치  0. 게임 시작" << endl;
+		cout << "======================================" << endl;
+		
+		cout << "번호를 선택해주세요: ";
+		cin >> menuNumber;
+
+		switch (menuNumber) {
+			case 0:
+				cout << "게임을 시작합니다!" << endl;
+				cout << endl;
+				return;
+			case 1:
+				useHpPotion(stat, hpPotion);
+				break;
+			case 2:
+				useMpPotion(stat, mpPotion);
+				break;
+			case 3:
+				doubleAttackPoint(stat);
+				break;
+			case 4:
+				doubleDefensePoint(stat);
+				break;
+			case 5:
+				printStatus(name, stat);
+				break;
+			default:
+				cout << "잘못된 입력입니다." << endl;
+				cout << endl;
+				continue;
+		}
+		cout << endl;
+	}
+}
+
+void classChange(const string& name, int stat[], Player*& player) {         // 전직 시스템
+	int classNumber = -1;
+
+	cout << "< 전직 시스템 >" << endl;
+	cout << name << "님, 직업을 선택해주세요!" << endl;
+	while (true) {
+		cout << "1. 전사   2. 마법사   3. 도적   4. 궁수" << endl;
+		cout << "선택: ";
+		cin >> classNumber;
+		switch (classNumber) {
+			case 1:
+				player = new Warrior(name, stat[HP], stat[MP], stat[AP], stat[DP]);
+				break;
+			case 2:
+				player = new Magician(name, stat[HP], stat[MP], stat[AP], stat[DP]);
+				break;
+			case 3:
+				player = new Thief(name, stat[HP], stat[MP], stat[AP], stat[DP]);
+				break;
+			case 4:
+				player = new Archer(name, stat[HP], stat[MP], stat[AP], stat[DP]);
+				break;
+			default:
+				cout << "잘못된 입력입니다." << endl;
+				cout << endl;
+				continue;
+		}
+		player->classChangeMessage();
+		player->printPlayerStatus();
+		cout << endl;
+		break;
+	}
+}
+
+void fight(Player& player, vector<Item>& inventory) {
+	int randomMonsterSpawn = rand() % 100;
+	Monster* monster = nullptr;
+	int menuNumber = -1;
+
+	if (randomMonsterSpawn < 40) {
+		monster = new Slime;
+	}
+	else if (randomMonsterSpawn < 70) {
+		monster = new Goblin;
+	}
+	else if (randomMonsterSpawn < 85) {
+		monster = new Bat;
+	}
+	else if (randomMonsterSpawn < 95) {
+		monster = new Zombie;
+	}
+	else {
+		monster = new Golem;
+	}
+
+	cout << "[ 전투 시작! ] " << player.getName() << "(" << player.getJob() << ") vs " << monster->getName() << endl;
+	cout << endl;
+
+	while (player.getHp() > 0 && monster->getHp() > 0) {
+		while (true){
+			cout << "--- 플레이어 턴 ---" << endl;
+			cout << "1. 공격" << endl;
+			cout << "2. 아이템 사용" << endl;
+			cout << endl;
+
+			cout << "선택: ";
+			cin >> menuNumber;
+
+			if (cin.fail()) {
+				cout << "숫자를 입력해주세요." << endl;
+
+				cin.clear();
+				cin.ignore(1000, '\n');
+
+				continue;
+			}
+
+			cout << endl;
+
+			switch (menuNumber) {
+				case 1:
+					player.attack(*monster);
+					break;
+				case 2:
+					useItem(player, inventory);
+					break;
+				default:
+					cout << "잘못된 입력입니다." << endl;
+					continue;
+			}
+			
+			if (monster->getHp() <= 0) break;
+
+			cout << " --- 몬스터 턴 ---" << endl;
+			monster->attack(player);
+		}
+		if (player.getHp() <= 0) {
+			cout << "패배" << endl;
+			cout << endl;
+
+			delete monster;
+		}
+		else {
+			cout << "★ 전투 승리!" << endl;
+			player.levelUp(*monster);
+			cout << "-> " << monster->getDropItemName() << " 획득!" << endl;
+			cout << "인벤토리에 저장되었습니다." << endl;
+			getItem(inventory, monster->getDropItem(), 1);
+			cout << endl;
+
+			delete monster;
+		}
+	}
+}
+
+void printInventory(const vector<Item>& inventory) {
+	cout << "[ 인벤토리 ]" << endl;
+	int i = 1;
+	for (const auto& item : inventory) {
+		cout << i << ". " << item.name << " × " << item.count << endl;
+		++i;
+	}
+	cout << endl;
+
+}
+
+void gameMenu(Player& player, vector<Item>& inventory, vector<Potion>& potion) {
+	int menuNumber = -1;
+
+	while (true) {
+		cout << "=== 메인 메뉴 ===" << endl;
+		cout << "1. 던전 입장" << endl;
+		cout << "2. 인벤토리 확인" << endl;
+		cout << "3. 포션 제조소" << endl;
+		cout << "4. 현재 능력치" << endl;
+		cout << "0. 게임 종료" << endl;
+		cout << endl;
+
+		cout << "선택: ";
+		cin >> menuNumber;
+
+		if (cin.fail()) {
+			cout << "숫자를 입력해주세요." << endl;
+
+			cin.clear();
+			cin.ignore(1000, '\n');
+
+			continue;
+		}
+
+		cout << endl;
+		switch (menuNumber) {	
+			case 0:
+				cout << "게임을 종료합니다." << endl;
+				return;
+			case 1:
+				fight(player, inventory);
+				break;
+			case 2:
+				printInventory(inventory);
+				break;
+			case 3:
+				alchemyWorkshop(potion);
+				break;
+			case 4:
+				player.printPlayerStatus();
+				break;
+			default:
+				cout << "잘못된 입력입니다." << endl;
+				continue;
+		}
+		cout << endl;
+	}
+}
+
+void getPotionRecipe(vector<Potion>& potion, string potionName, string ingredient1, int numIngredient1, string ingredient2, int numIngredient2) {
+	string recipe = ingredient1 + " " + to_string(numIngredient1) + "개, " + ingredient2 + " " + to_string(numIngredient2) + "개";
+	Potion potionStruct = { potionName, recipe };
+	potion.push_back(potionStruct);
+}
+
+void showAllPotionRecipe(const vector<Potion>& potion) {
+	for (const auto& recipe : potion) {
+		cout << recipe.name << endl;
+		cout << "재료: ";
+		cout << recipe.recipe << endl;
+	}
+	cout << endl;
+}
+
+void SearchByName(const vector<Potion>& potion) {
+	string potionName;
+	cout << "검색할 포션 이름: ";
+	cin >> ws;
+	getline(cin, potionName);
+
+	bool found = false;
+
+	auto it = potion.begin();
+
+	while (it != potion.end()) {
+		it = find_if(it, potion.end(), [&potionName](const Potion& potion) {return potion.name.find(potionName) != string::npos; });
+
+		if (it != potion.end()) {
+			cout << "-> " << it->name << ": " << it->recipe << endl;
+			found = true;
+
+			++it;
+		}
+	}
+
+	if (!found) {
+		cout << "해당하는 포션을 찾을 수 없습니다." << endl;
+	}
+
+	cout << endl;
+}
+
+void SearchByIngredient(const vector<Potion>& potion) {
+	string ingredientName;
+	int count = 0;
+	cout << "검색할 재료: ";
+	cin >> ws;
+	getline(cin, ingredientName);
+
+	bool found = false;
+
+	auto it = potion.begin();
+
+	while (it != potion.end()) {
+		it = find_if(it, potion.end(), [&ingredientName](const Potion& potion) {return potion.recipe.find(ingredientName) != string::npos; });
+
+		if (it != potion.end()) {
+			cout << "-> " << it->name << ": " << it->recipe << endl;
+			found = true;
+
+			++it;
+			++count;
+		}
+	}
+
+	if (!found) {
+		cout << "해당 재료가 들어가는 레시피를 찾을 수 없습니다." << endl;
+	}
+	else {
+		cout << "총 " << count << "개의 레시피를 찾았습니다." << endl;
+	}
+
+	cout << endl;
+}
+
+void alchemyWorkshop(vector<Potion>& potion) {
+	int menuNumber = -1;
+
+	while (true) {
+		cout << "=== 포션 제작소 ===" << endl;
+		cout << "1. 전체 레시피 보기" << endl;
+		cout << "2. 포션 이름으로 검색" << endl;
+		cout << "3. 재료로 검색" << endl;
+		cout << "0. 돌아가기" << endl;
+		cout << endl;
+
+		if (cin.fail()) {
+			cout << "숫자를 입력해주세요." << endl;
+
+			cin.clear();
+			cin.ignore(1000, '\n');
+
+			continue;
+		}
+
+		cout << "선택: ";
+		cin >> menuNumber;
+
+		if (cin.fail()) {
+			cout << "숫자를 입력해주세요." << endl;
+
+			cin.clear();
+			cin.ignore(1000, '\n');
+
+			continue;
+		}
+
+		cout << endl;
+		switch (menuNumber) {
+		case 0:
+			return;
+		case 1:
+			showAllPotionRecipe(potion);
+			break;
+		case 2:
+			SearchByName(potion);
+			break;
+		case 3:
+			SearchByIngredient(potion);
+			break;
+		default:
+			cout << "잘못된 입력입니다." << endl;
+			continue;
+		}
+	}
+}
+
+void setPotion(int count, int* hpPotion, int* mpPotion) {
+	*hpPotion = count;
+	*mpPotion = count;
+}
+
+void getItem(vector<Item>& inventory, Item item, int count) {
+	auto it = find_if(inventory.begin(), inventory.end(), [&item](const Item& inventoryItem) {return inventoryItem.name == item.name;});
+
+	if (it != inventory.end()) {
+		it->count += count;
+	}
+	else {
+		Item newItem = item;
+		newItem.count = count;
+		inventory.push_back(newItem);
+	}
+}
+
+void useItem(Player& player, vector<Item>& inventory) {
+	vector<int> usableItems;
+
+	cout << "[ 인벤토리 ]" << endl;
+
+	int number = 1;
+
+	for (int i = 0; i < inventory.size(); ++i) { //소모품만 보이는 벡터
+		if (inventory[i].type == ItemType::Consumable) {
+			cout << number << ". " << inventory[i].name<< " x " << inventory[i].count << endl;
+
+			usableItems.push_back(i);
+			++number;
+		}
+	}
+	cout << endl;
+
+	if (usableItems.empty()) {
+		cout << "사용할 수 있는 아이템이 없습니다." << endl << endl;
+		return;
+	}
+
+	int itemNumber;
+	cout << "사용할 아이템 번호: ";
+	cin >> itemNumber;
+
+	cout << endl;
+	if (cin.fail()) {
+		cin.clear();
+		cin.ignore(1000, '\n');
+
+		cout << "숫자를 입력해주세요." << endl << endl;
+		return;
+	}
+
+	if (itemNumber < 1 || itemNumber > usableItems.size()) {
+		cout << "잘못된 선택입니다." << endl << endl;
+		return;
+	}
+
+	int index = usableItems[itemNumber - 1];
+
+	if (inventory[index].name == "HP 포션") {
+		if (player.getHp() >= player.getMaxHp()) { //최대 HP일 때 사용 불가
+			cout << "HP가 이미 최대치입니다. 포션을 사용할 수 없습니다." << endl << endl;
+			return;
+		}
+
+		int beforeHp = player.getHp();
+		player.setHp(min(player.getHp() + POTION_POINTUP, player.getMaxHp()));
+		int recoveredHp = player.getHp() - beforeHp;
+		cout << "HP 포션 사용! HP " << recoveredHp << " 회복 (" << beforeHp << " -> " << player.getHp() << ")" << endl << endl;
+	}
+	else if (inventory[index].name == "MP 포션") {
+		if (player.getMp() >= player.getMaxMp()) { //최대 MP일 때 사용 불가
+			cout << "MP가 이미 최대치입니다. 포션을 사용할 수 없습니다." << endl << endl;
+			return;
+		}
+
+		int beforeMp = player.getMp();
+		player.setMp(min(player.getMp() + POTION_POINTUP, player.getMaxMp()));
+		int recoveredMp = player.getMp() - beforeMp;
+		cout << "MP 포션 사용! HP " << recoveredMp << " 회복 (" << beforeMp << " -> " << player.getMp() << ")" << endl << endl;
+	}
+
+	--inventory[index].count;
+
+	if (inventory[index].count == 0) {
+		inventory.erase(inventory.begin() + index);
+	}
+}
+
+//Player.h
+#ifndef PLAYER_H
+#define PLAYER_H
+#include <iostream>
+using namespace std;
+
+class Monster;
+
+class Player {
+protected:
+	string name;
+	string job;
+	int level;
+	int hp;
+	int maxHp;
+	int mp;
+	int maxMp;
+	int ap;
+	int dp;
+	int exp;
+	int maxExp;
+public:
+	Player(const string& name, string job, int hp, int mp, int ap, int dp) :name(name), job(job), hp(hp), maxHp(hp), mp(mp), maxMp(mp), ap(ap), dp(dp), level(1), exp(0), maxExp(100) {}
+
+	virtual void classChangeMessage() const = 0;
+	virtual void attackMessage(Monster& monster, int damage) const = 0;
+	virtual int calculateDamage(Monster& monster) const = 0;
+
+	void printPlayerStatus() const;
+	const string& getName() const;
+	const string& getJob() const;
+	int getHp() const;
+	void setHp(int hp);
+	int getMaxHp() const;
+	void setMaxHp(int maxHp);
+	int getMp() const;
+	void setMp(int mp);
+	int getMaxMp() const;
+	void setMaxMp(int maxMp);
+	int getAp() const;
+	void setAp(int ap);
+	int getDp() const;
+	void setDp(int dp);
+	int getExp() const;
+	int getMaxExp() const;
+	void setExp(int exp);
+	void setMaxExp(int maxExp);
+	int getLevel() const;
+	void setLevel();
+	void levelUp(Monster& monster);
+	void attack(Monster& monster);
+	virtual ~Player() {}
+};
+
+class Warrior : public Player {
+public:
+	Warrior(const string& name, int hp, int mp, int ap, int dp) : Player(name, "전사", hp + 30, mp, ap, dp) {}
+
+	void classChangeMessage() const override{
+		cout << "* 전사로 전직하였습니다. (HP +30)" << endl;
+	}
+	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
+};
+
+class Magician : public Player {
+public:
+	Magician(const string& name, int hp, int mp, int ap, int dp) : Player(name, "마법사", hp, mp + 30, ap, dp) {}
+
+	void classChangeMessage() const override{
+		cout << "* 마법사로 전직하였습니다. (MP +30)" << endl;
+	}
+	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
+};
+
+class Thief : public Player {
+public:
+	Thief(const string& name, int hp, int mp, int ap, int dp) : Player(name, "도적", hp, mp, ap + 30, dp) {}
+
+	void classChangeMessage() const override{
+		cout << "* 도적으로 전직하였습니다. (AP +30)" << endl;
+	}
+	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
+};
+
+class Archer : public Player {
+public:
+	Archer(const string& name, int hp, int mp, int ap, int dp) : Player(name, "궁수", hp, mp, ap + 30, dp) {}
+
+	void classChangeMessage() const override{
+		cout << "* 궁수로 전직하였습니다. (AP +30)" << endl;
+	}
+	void attackMessage(Monster& monster, int damage) const override;
+	int calculateDamage(Monster& monster) const override;
+};
+#endif
+
+//Player.cpp
+#include "Player.h"
+#include "Monster.h"
+#include <iostream>
+using namespace std;
+
+void Player::printPlayerStatus() const {
+	cout << "------------------------------------" << endl;
+	cout << "닉네임: " << name << " | 직업: " << job << " | Lv." << level << " 현재 경험치: (" << exp << "/" << maxExp << ")" << endl;
+	cout << "HP: " << hp << " | MP: " << mp << " | 공격력: " << ap << " | 방어력: " << dp << endl;
+	cout << "------------------------------------" << endl;
+}
+
+const string& Player::getName() const { return name; }
+const string& Player::getJob() const { return job; }
+
+int Player::getHp() const { return hp; }
+void Player::setHp(int hp) { this->hp = hp; }
+int Player::getMaxHp() const { return maxHp; }
+void Player::setMaxHp(int maxHp) { this->maxHp = maxHp; }
+
+int Player::getMp() const { return mp; }
+void Player::setMp(int mp) { this->mp = mp; }
+int Player::getMaxMp() const { return maxMp; }
+void Player::setMaxMp(int maxMp) { this->maxMp = maxMp; }
+
+int Player::getAp() const { return ap; }
+void Player::setAp(int ap) { this->ap = ap; }
+
+int Player::getDp() const { return dp; }
+void Player::setDp(int dp) { this->dp = dp; }
+
+int Player::getExp() const { return exp; }
+int Player::getMaxExp() const { return maxExp; }
+void Player::setExp(int exp) { this->exp = exp; }
+void Player::setMaxExp(int maxExp) { this->maxExp = maxExp; }
+
+int Player::getLevel() const { return level; }
+void Player::setLevel() { level += 1; }
+
+void Player::levelUp(Monster& monster) {
+	exp += monster.getExpReward();
+
+	cout << "-> 경험치 +" << monster.getExpReward() << " 획득!" << endl;
+
+	while (exp >= maxExp) {
+		exp -= maxExp;
+
+		cout << "레벨업! Lv." << level;
+
+		setLevel();
+
+		cout << " -> Lv." << level << endl;
+		cout << "HP + 10, MP +5, 공격력 +5, 방어력 +5 증가!" << endl;
+
+		maxHp += 10;
+		hp += 10;
+		mp += 5;
+		ap += 5;
+		dp += 5;
+
+		maxExp += 10;
+	}
+
+	cout << "현재 경험치: (" << exp << "/" << maxExp << ")" << endl;
+}
+
+void Player::attack(Monster& monster) {
+	int monsterHp = monster.getHp();
+
+	int damage = calculateDamage(monster);
+
+	if (damage <= 0) {
+		damage = 1;
+	}
+
+	int monsterNewHp = monsterHp - damage;
+
+	if (monsterNewHp < 0) {
+		monsterNewHp = 0;
+	}
+
+	attackMessage(monster, damage);
+
+	cout << monster.getName() << " HP: " << monsterHp << " -> " << monsterNewHp;
+
+	if (monsterNewHp == 0) {
+		cout << " (사망)";
+	}
+
+	cout << endl << endl;
+
+	monster.setHp(monsterNewHp);
+}
+
+void Warrior::attackMessage(Monster& monster, int damage) const {
+	cout << "* 대검을 휘두른다! -> " << monster.getName() << "에게 " << damage << " 데미지!" << endl;
+}
+
+int Warrior::calculateDamage(Monster& monster) const {
+	return ap - monster.getDp();
+}
+
+void Magician::attackMessage(Monster& monster, int damage) const {
+	cout << "* 파이어볼을 발사한다! -> " << monster.getName() << "에게 " << damage << " 데미지!" << endl;
+}
+
+int Magician::calculateDamage(Monster& monster) const {
+	return ap - monster.getDp();
+}
+
+void Thief::attackMessage(Monster& monster, int damage) const{
+	cout << "* 표창을 날린다! -> " << monster.getName() << "에게 " << damage << " 데미지! (x6)" << endl;
+}
+
+int Thief::calculateDamage(Monster& monster) const {
+	int damagePerHit = ap / 6 - monster.getDp();
+	return damagePerHit * 6;
+}
+
+void Archer::attackMessage(Monster& monster, int damage) const {
+	cout << "* 화살을 날린다! -> " << monster.getName() << "에게 " << damage << " 데미지! (x3)" << endl;
+}
+
+int Archer::calculateDamage(Monster& monster) const {
+	int damagePerHit = ap / 3 - monster.getDp();
+	return damagePerHit * 3;
+}
+
+//Monster.h
+#ifndef MONSTER_H
+#define MONSTER_H
+#include <iostream>
+using namespace std;
+
+enum class ItemType {
+	Material,
+	Consumable
+};
+
+struct Item {
+	string name;
+	int price;
+	int count = 0;
+	ItemType type;
+
+	void printInfo() const {
+		cout << name << " -> " << price << "골드" << endl;
+	}
+};
+
+class Player;
+
+class Monster {
+protected:
+	string name;
+	int hp;
+	int ap;
+	int dp;
+	Item dropItem;
+	int expReward;
+
+public:
+	Monster(const string& name, int hp, int ap, int dp, const string& dropItemname, int dropItemPrice) : name(name), hp(hp), ap(ap), dp(dp), dropItem{dropItemname, dropItemPrice, 0, ItemType::Material}, expReward(0) {}
+
+	void attack(Player& player);
+	const string& getName() const { return name; }
+	const string& getDropItemName() const { return dropItem.name; }
+	int getHp() const { return hp; }
+	int getDp() const { return dp; }
+	void setHp(int hp) { this->hp = hp; }
+	int getExpReward() { return expReward; }
+	const Item& getDropItem() const { return dropItem; }
+};
+
+class Slime : public Monster {
+public:
+	Slime() : Monster("슬라임", 50, 20, 10, "슬라임의 끈적한 젤리", 50) {
+		expReward = 30;
+	}
+};
+
+class Goblin : public Monster {
+public:
+	Goblin() : Monster("고블린", 80, 30, 15, "녹슨 단검", 100) {
+		expReward = 40;
+	}
+};
+
+class Bat : public Monster {
+public:
+	Bat()
+		: Monster("박쥐", 40, 35, 5, "박쥐의 날개", 70) {
+		expReward = 30;
+	}
+};
+
+class Zombie : public Monster {
+public:
+	Zombie()
+		: Monster("좀비", 120, 25, 25, "썩은 고기", 100) {
+		expReward = 40;
+	}
+};
+
+class Golem : public Monster {
+public:
+	Golem()
+		: Monster("골렘", 200, 35, 50, "골렘의 핵", 200) {
+		expReward = 70;
+	}
+};
+#endif
+
+//Monster.cpp
+#include "Monster.h"
+#include "Player.h"
+#include <iostream>
+using namespace std;
+
+void Monster::attack(Player& player) {
+	int playerHp = player.getHp();
+	int damage = ap - player.getDp();
+	if (damage <= 0) damage = 1;
+	int playerNewHp = playerHp - damage;
+	if (playerNewHp < 0) playerNewHp = 0;
+	cout << name << "이 공격했다!" << endl;
+	cout << player.getName() << "에게 " << damage << " 데미지!" << endl;
+	cout << player.getName() << " HP: " << playerHp << " -> " << playerNewHp;
+	if (playerNewHp == 0) cout << " (사망)";
+	cout << endl;
+	cout << endl;
+	player.setHp(playerNewHp);
+}
